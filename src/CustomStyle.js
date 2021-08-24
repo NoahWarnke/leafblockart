@@ -144,16 +144,16 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
         );
         ctx.stroke();
 
-        // If lineLength > .03, branch
-        if (lineLength < 0.03) {
+        // If lineLength > .01, branch
+        if (lineLength < 0.01) {
           console.log('exit!')
           return;
         }
 
-        let branchingAngle = Math.PI / 8;
-
-        branching(coreX, coreY, endX, endY, angle - branchingAngle, lineLength / 2, lineWidth / 2);
-        branching(coreX, coreY, endX, endY, angle + branchingAngle, lineLength / 2, lineWidth / 2);
+        //let branchingAngle = Math.PI / 8;
+        let branchingAngle = mod1;
+        branching(coreX, coreY, endX, endY, angle - branchingAngle, lineLength / 1.5, lineWidth / 1.5);
+        branching(coreX, coreY, endX, endY, angle + branchingAngle, lineLength / 1.5, lineWidth / 1.5);
       }
 
 
