@@ -46,6 +46,7 @@ const styleMetadata = {
 
 export { styleMetadata };
 
+/*
 function rect(props) {
   const { ctx, x, y, width, height, color } = props;
   ctx.fillStyle = color;
@@ -62,6 +63,7 @@ function rect(props) {
   ctx.quadraticCurveTo(125 + x, 25 + y, 75 + x, 25 + y);
   ctx.stroke();
 }
+*/
 
 const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, color1, background, ...props }) => {
     const shuffleBag = useRef();
@@ -75,9 +77,6 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
 
-      console.log(canvas.width + ', ' + canvas.height);
-
-      console.log(block);
       const { hash } = block;
       const seed = parseInt(hash.slice(0, 16), 16);
       shuffleBag.current = new MersenneTwist(seed);
@@ -85,11 +84,89 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
       function rnd() {
         return shuffleBag.current.random();
       }
+
+      let width = canvas.width;
+      let height = canvas.height;
+
+      ctx.fillStyle = Color([0, 0, 0]);
+      ctx.fillRect(0, 0, width, height);
+
+      let startX = 0.5;
+      let startY = 0.5;
+
+      let minBranches = 5;
+      let maxBranches = 12;
+      let numBranches = Math.floor(rnd() * (maxBranches - minBranches)) + minBranches;
+
+      
+
+      // Generate angles for start of branching
+      let angles = [];
+      for (let i = 0; i < numBranches; i++) {
+        let tooClose = true;
+
+        let c = 0;
+
+        while (tooClose) {
+          tooClose = false;
+          angles[i] = Math.PI * 2 * rnd();
+
+          // Check all previous branches to see if new one is too close.
+          for (let j = 0; j < i; j++) {
+            let thisOneIsTooClose = Math.abs(angles[i] - angles[j]) < Math.PI / numBranches;
+            tooClose = tooClose || thisOneIsTooClose;
+          }
+        }
+      }
+
+      for (let i = 0; i < numBranches; i++) {
+        branching(
+          0, 0, 
+          startX, startY, 
+          angles[i],
+          0.1,
+          0.01
+        );
+      }
+
+      function branching(coreX, coreY, x, y, angle, lineLength, lineWidth) {
+        ctx.strokeStyle = Color([0, 255, 0]).hex();
+        ctx.lineWidth = lineWidth * width;
+        ctx.beginPath();
+        ctx.moveTo(x * width, y * height);
+
+        let endX = x + Math.cos(angle) * lineLength;
+        let endY = y + Math.sin(angle) * lineLength;
+
+        ctx.lineTo(
+          endX * width, 
+          endY * height
+        );
+        ctx.stroke();
+
+        // If lineLength > .03, branch
+        if (lineLength < 0.03) {
+          console.log('exit!')
+          return;
+        }
+
+        let branchingAngle = Math.PI / 8;
+
+        branching(coreX, coreY, endX, endY, angle - branchingAngle, lineLength / 2, lineWidth / 2);
+        branching(coreX, coreY, endX, endY, angle + branchingAngle, lineLength / 2, lineWidth / 2);
+      }
+
+
+      /*
+      ctx.fillStyle = Color([rnd255(), rnd255(), rnd255()]).hex();
+      ctx.fillRect(0, 0, width, height);
+      
       
       function rnd255() {
         return Math.floor(255 * rnd());
       }
 
+      /*
 
       ctx.clearRect(0, 0, width, height);
       block.transactions.map((tx, i) => {
@@ -104,6 +181,7 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
         });
       });
 
+      */
       
 
       hoistedValue.current = 42;
