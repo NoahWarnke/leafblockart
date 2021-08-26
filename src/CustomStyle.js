@@ -74,6 +74,7 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
     }
 
     useEffect(() => {
+      // Setup
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
 
@@ -91,45 +92,190 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
       ctx.fillStyle = Color([0, 0, 0]);
       ctx.fillRect(0, 0, width, height);
 
-      let startX = 0.5;
-      let startY = 0.5;
-
+      let numTrees = Math.floor(rnd() * 20) + 1;
       let minBranches = 5;
       let maxBranches = 12;
-      let numBranches = Math.floor(rnd() * (maxBranches - minBranches)) + minBranches;
 
-      
+      let treesRemainingBranches = [];
 
-      // Generate angles for start of branching
-      let angles = [];
-      for (let i = 0; i < numBranches; i++) {
-        let tooClose = true;
-
-        let c = 0;
-
-        while (tooClose) {
-          tooClose = false;
-          angles[i] = Math.PI * 2 * rnd();
-
-          // Check all previous branches to see if new one is too close.
-          for (let j = 0; j < i; j++) {
-            let thisOneIsTooClose = Math.abs(angles[i] - angles[j]) < Math.PI / numBranches;
-            tooClose = tooClose || thisOneIsTooClose;
-          }
-        }
-      }
-
-      for (let i = 0; i < numBranches; i++) {
-        branching(
-          0, 0, 
-          startX, startY, 
-          angles[i],
-          0.1,
-          0.01
+      for (var i = 0; i < numTrees; i++) {
+        let startX = rnd() * 1;
+        let startY = rnd() * 1;
+  
+        
+        let numBranches = Math.floor(rnd() * (maxBranches - minBranches)) + minBranches;
+        
+        let lineLength = rnd() * 0.1 + 0.05;
+        let lineLengthMin = lineLength / 10;
+        
+        treesRemainingBranches.push(
+          statefulTree(startX, startY, numBranches, lineLength, lineLengthMin)
         );
       }
 
-      function branching(coreX, coreY, x, y, angle, lineLength, lineWidth) {
+      
+      let anythingLeftToDo = treesRemainingBranches.reduce((accumulator, cur) => {
+        return accumulator || cur.length > 0;
+      }, false);
+
+      let depth = 0;
+      
+      while (anythingLeftToDo) {
+        if (depth++ > 10) {
+          return;
+        };
+
+        for (let i = 0; i < numTrees; i++) {
+          treesRemainingBranches[i] = renderDeeperLevel(treesRemainingBranches[i]);
+        }
+
+        anythingLeftToDo = treesRemainingBranches.reduce((accumulator, cur) => {
+          return accumulator || cur.length > 0;
+        }, false);
+      }
+
+      function statefulTree(startX, startY, numBranches, lineLength, lineLengthMin) {
+        
+
+        // Generate angles for start of branching
+        let angles = [];
+        for (let i = 0; i < numBranches; i++) {
+          let tooClose = true;
+
+          let c = 0;
+
+          while (tooClose) {
+            tooClose = false;
+            angles[i] = Math.PI * 2 * rnd();
+
+            // Check all previous branches to see if new one is too close.
+            for (let j = 0; j < i; j++) {
+              let thisOneIsTooClose = Math.abs(angles[i] - angles[j]) < Math.PI / numBranches;
+              tooClose = tooClose || thisOneIsTooClose;
+            }
+          }
+        }
+
+        let remainingBranches = [];
+
+        // Actual looping
+        for (let i = 0; i < numBranches; i++) {
+          remainingBranches.push(
+            {
+              coreX: 0, coreY: 0, 
+              x: startX, y: startY,
+              angle: angles[i],
+              lineLength,
+              lineLengthMin,
+              lineWidth: lineLength / 10 
+            },
+          );
+        }
+
+        return remainingBranches;
+      }
+
+
+      function renderDeeperLevel(remainingBranches) {
+        let newRemainingBranches = [];
+
+        remainingBranches.forEach(branchState => {
+          let childBranches = statefulBranch(branchState);
+          newRemainingBranches.push(...childBranches);
+        });
+
+        return newRemainingBranches;
+      }
+
+
+      function statefulBranch(branchState) {
+        let {coreX, coreY, x, y, angle, lineLength, lineLengthMin, lineWidth} = branchState;
+        
+        //console.log('statefulBranch: ');
+        //console.log(x + ', ' + y + ', ' + lineLength);
+
+        // If lineLength too small, finish
+        if (lineLength < lineLengthMin) {
+          return [];
+        }
+
+        ctx.strokeStyle = Color([0, 255, 0]).hex();
+        ctx.lineWidth = lineWidth * width;
+        ctx.beginPath();
+        ctx.moveTo(x * width, y * height);
+
+        let endX = x + Math.cos(angle) * lineLength;
+        let endY = y + Math.sin(angle) * lineLength;
+
+        ctx.lineTo(
+          endX * width, 
+          endY * height
+        );
+        ctx.stroke();
+
+
+        //let branchingAngle = Math.PI / 8;
+        let branchingAngle = mod1;
+        
+        return [
+          {
+            coreX, coreY, 
+            x: endX, y: endY,
+            angle: angle - branchingAngle,
+            lineLength: lineLength / 1.5,
+            lineLengthMin,
+            lineWidth: lineWidth / 1.5 
+          },
+          {
+            coreX, coreY, 
+            x: endX, y: endY,
+            angle: angle + branchingAngle,
+            lineLength: lineLength / 1.5,
+            lineLengthMin,
+            lineWidth: lineWidth / 1.5 
+          },
+        ];
+      }
+
+      /*
+      
+        // Create a single fractal
+      function radialTree(startX, startY, numBranches, branchLengthStart, branchLengthMin) {
+        
+        // Generate angles for start of branching
+        let angles = [];
+        for (let i = 0; i < numBranches; i++) {
+          let tooClose = true;
+
+          let c = 0;
+
+          while (tooClose) {
+            tooClose = false;
+            angles[i] = Math.PI * 2 * rnd();
+
+            // Check all previous branches to see if new one is too close.
+            for (let j = 0; j < i; j++) {
+              let thisOneIsTooClose = Math.abs(angles[i] - angles[j]) < Math.PI / numBranches;
+              tooClose = tooClose || thisOneIsTooClose;
+            }
+          }
+        }
+
+        // Actual looping
+        for (let i = 0; i < numBranches; i++) {
+          branching(
+            0, 0, 
+            startX, startY, 
+            angles[i],
+            branchLengthStart,
+            branchLengthMin,
+            0.01
+          );
+        }
+      }
+
+      // Create each individual branch of the thing
+      function branching(coreX, coreY, x, y, angle, lineLength, lineLengthMin, lineWidth) {
         ctx.strokeStyle = Color([0, 255, 0]).hex();
         ctx.lineWidth = lineWidth * width;
         ctx.beginPath();
@@ -145,15 +291,15 @@ const Outer = React.memo(({ canvasRef, block, width, height, mod1, mod2, mod3, c
         ctx.stroke();
 
         // If lineLength > .01, branch
-        if (lineLength < 0.01) {
+        if (lineLength < lineLengthMin) {
           console.log('exit!')
           return;
         }
 
         //let branchingAngle = Math.PI / 8;
         let branchingAngle = mod1;
-        branching(coreX, coreY, endX, endY, angle - branchingAngle, lineLength / 1.5, lineWidth / 1.5);
-        branching(coreX, coreY, endX, endY, angle + branchingAngle, lineLength / 1.5, lineWidth / 1.5);
+        branching(coreX, coreY, endX, endY, angle - branchingAngle - mod2, lineLength / 1.5, lineLengthMin, lineWidth / 1.5);
+        branching(coreX, coreY, endX, endY, angle + branchingAngle - mod2, lineLength / 1.5, lineLengthMin, lineWidth / 1.5);
       }
 
 
